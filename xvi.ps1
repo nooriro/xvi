@@ -78,20 +78,40 @@ if ( $nativeTar ) {
   # https://stackoverflow.com/a/14699663
   & cmd "/c ${dir}\7za x ""${tgzName}"" -so | ${dir}\7za x -aoa -si -ttar -o""${dir}"" > NUL"
 }
+$memUsage = [GC]::GetTotalMemory($false)
+"    Memory Usage               [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
 
 "- Skipping first $($PAYLOAD_START_LINE - 1) lines of  [extract-google_devices-${tgzDevice}.sh]"
 Set-Location $dir
 [Environment]::CurrentDirectory = (Get-Location -PSProvider FileSystem).ProviderPath
+$stopWatch1 = [Diagnostics.Stopwatch]::new()
+$stopWatch1.Start()
 $bytes = [IO.File]::ReadAllBytes( "extract-google_devices-${tgzDevice}.sh" )
 $p = 0
 for ( $i = 1; $i -lt $PAYLOAD_START_LINE; $i++ ) {
   $p = [Array]::IndexOf( $bytes, $LF, $p ) + 1
 }
+$stopWatch1.Stop()
+"    Execution Time             [{0:n7}]" -f ($stopWatch1.Elapsed.ticks / 10000000)
+$memUsage = [GC]::GetTotalMemory($false)
+"    Memory Usage               [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
 
 "- Saving payload data as       [payload.tgz]"
+$stopWatch2 = [Diagnostics.Stopwatch]::new()
+$stopWatch2.Start()
 $fs = [IO.File]::Create( "payload.tgz" )
 $fs.Write( $bytes, $p, $bytes.Length - $p )
 $fs.Close()
+$stopWatch2.Stop()
+"    Execution Time             [{0:n7}]" -f ($stopWatch2.Elapsed.ticks / 10000000)
+"    Total Execution Time       [{0:n7}]" -f (($stopWatch1.Elapsed.ticks + $stopWatch2.Elapsed.ticks) / 10000000)
+$memUsage = [GC]::GetTotalMemory($false)
+"    Memory Usage               [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
+$memUsage = [GC]::GetTotalMemory($true)
+"    Memory Usage (After GC)    [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
+$bytes = $null
+$memUsage = [GC]::GetTotalMemory( $true )
+"    Memory Usage (After GC 2)  [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
 
 "- Extracing file(s) from payload data tgz"
 if ( $nativeTar ) {
