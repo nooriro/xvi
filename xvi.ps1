@@ -20,7 +20,7 @@ if ( $PSEdition -ne "Core" -or $IsWindows ) {
 }
 
 Set-Variable -Option Constant  -Name PAYLOAD_START_LINE  -Value 315
-Set-Variable -Option Constant  -Name LF                  -Value ([Byte]10)
+Set-Variable -Option Constant  -Name LF                  -Value ([byte]10)
 Set-Variable -Option Constant  -Name BUFFER_SIZE         -Value 65536
 Set-Variable -Option Constant `
              -Name TGZ_FILENAME_REGEX `
@@ -80,36 +80,36 @@ if ( $nativeTar ) {
   & cmd "/c ${dir}\7za x ""${tgzName}"" -so | ${dir}\7za x -aoa -si -ttar -o""${dir}"" > NUL"
 }
 #$memUsage = [GC]::GetTotalMemory($false)
-#"    Memory Usage               [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
+#"    Memory Usage               [{0}] = [{1:F1} MiB]" -f $memUsage, ($memUsage / 1048576)
 
 "- Skipping first $($PAYLOAD_START_LINE - 1) lines of  [extract-google_devices-${tgzDevice}.sh]"
 Set-Location $dir
 [Environment]::CurrentDirectory = (Get-Location -PSProvider FileSystem).ProviderPath
 #$stopWatch1 = [Diagnostics.Stopwatch]::new()
 #$stopWatch1.Start()
-$fs1 = [IO.FileStream]::new("extract-google_devices-${tgzDevice}.sh", [IO.FileMode]::Open);
+$fs1 = [IO.FileStream]::new("extract-google_devices-${tgzDevice}.sh", [IO.FileMode]::Open, [IO.FileAccess]::Read)
 $buf = [byte[]]::new($BUFFER_SIZE)
-#$start = 0
+#$start = 0L
 $cnt = 0
 :outer while ( ( $len = $fs1.Read($buf, 0, $BUFFER_SIZE) ) -gt 0 ) {
   for ($i = 0; $i -lt $len; $i++) {
     if ($buf[$i] -eq $LF) {
       $cnt++
-      if ($cnt -eq ($PAYLOAD_START_LINE - 1)) {
+      if ($cnt -eq $PAYLOAD_START_LINE - 1) {
         break outer
       }
     }
   }
   #$start += $len
 } # breaks to here
-#"D   start: [0x{0:X08}]   len: [0x{1:X08}]   i: [0x{2:X08}]   cnt: [{3}]" -f $start, $len, $i, $cnt
+#"D   start: [0x{0:X016}]   len: [0x{1:X08}]   i: [0x{2:X08}]   cnt: [{3}]" -f $start, $len, $i, $cnt
 #$stopWatch1.Stop()
-#"    Execution Time             [{0:n7}]" -f ($stopWatch1.Elapsed.ticks / 10000000)
+#"    Execution Time             [{0:F7}]" -f $stopWatch1.Elapsed.TotalSeconds
 #$memUsage = [GC]::GetTotalMemory($false)
-#"    Memory Usage               [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
+#"    Memory Usage               [{0}] = [{1:F1} MiB]" -f $memUsage, ($memUsage / 1048576)
 if ($cnt -lt $PAYLOAD_START_LINE - 1) {
   "! Payload data is not exist in 'extract-google_devices-${tgzDevice}.sh'"
-  $fs1.close()
+  $fs1.Close()
   Set-Location ..
   [Environment]::CurrentDirectory = (Get-Location -PSProvider FileSystem).ProviderPath
   Remove-Item $dir -Recurse -Force
@@ -119,27 +119,27 @@ if ($cnt -lt $PAYLOAD_START_LINE - 1) {
 "- Saving payload data as       [payload.tgz]"
 #$stopWatch2 = [Diagnostics.Stopwatch]::new()
 #$stopWatch2.Start()
-$fs2 = [IO.FileStream]::new("payload.tgz", [IO.FileMode]::Create);
-$i++;
+$fs2 = [IO.FileStream]::new("payload.tgz", [IO.FileMode]::Create, [IO.FileAccess]::Write)
+$i++
 if ($i -lt $len) {
-  #"D   start: [0x{0:X08}]   len: [0x{1:X08}]" -f $i, ($len - $i)
+  #"D  start+i:[0x{0:X016}]  len-i:[0x{1:X08}]" -f ($start + $i), ($len - $i)
   $fs2.Write($buf, $i, $len - $i)
 }
 #$start += $len
 while ( ( $len = $fs1.Read($buf, 0, $BUFFER_SIZE) ) -gt 0 ) {
-  #"D   start: [0x{0:X08}]   len: [0x{1:X08}]" -f $start, $len
+  #"D   start: [0x{0:X016}]   len: [0x{1:X08}]" -f $start, $len
   $fs2.Write($buf, 0, $len)
   #$start += $len
 }
-$fs2.close()
-$fs1.close()
+$fs2.Close()
+$fs1.Close()
 #$stopWatch2.Stop()
-#"    Execution Time             [{0:n7}]" -f ($stopWatch2.Elapsed.ticks / 10000000)
-#"    Total Execution Time       [{0:n7}]" -f (($stopWatch1.Elapsed.ticks + $stopWatch2.Elapsed.ticks) / 10000000)
+#"    Execution Time             [{0:F7}]" -f $stopWatch2.Elapsed.TotalSeconds
+#"    Total Execution Time       [{0:F7}]" -f ($stopWatch1.Elapsed + $stopWatch2.Elapsed).TotalSeconds
 #$memUsage = [GC]::GetTotalMemory($false)
-#"    Memory Usage               [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
+#"    Memory Usage               [{0}] = [{1:F1} MiB]" -f $memUsage, ($memUsage / 1048576)
 #$memUsage = [GC]::GetTotalMemory($true)
-#"    Memory Usage (After GC)    [{0}] = [{1:n1} MiB]" -f $memUsage, ($memUsage / 1048576)
+#"    Memory Usage (After GC)    [{0}] = [{1:F1} MiB]" -f $memUsage, ($memUsage / 1048576)
 
 "- Extracing file(s) from payload data tgz"
 if ( $nativeTar ) {
