@@ -93,12 +93,15 @@ $buf = [byte[]]::new($BUFFER_SIZE)
 $cnt = 0
 :outer while ( ( $len = $fs1.Read($buf, 0, $BUFFER_SIZE) ) -gt 0 ) {
   for ($i = 0; $i -lt $len; $i++) {
-    if ($buf[$i] -eq $LF) {
+    $i = [Array]::IndexOf($buf, $LF, $i, $len - $i)
+    if ($i -ge 0) {    # In this case, $buf[$i] == $LF
       $cnt++
       if ($cnt -eq $PAYLOAD_START_LINE - 1) {
         break outer
       }
-    }
+    } else {           # no more $LF
+        break          #   ---> next buffer
+    } # --------> search next $LF in this buffer
   }
   #$start += $len
 } # breaks to here
